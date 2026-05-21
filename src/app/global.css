@@ -1,0 +1,173 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+/* -------------------------------------------------------------------------- */
+/* Design tokens — synced with src/theme/colors.ts & src/theme/typography.ts  */
+/* @see src/prompt_material/01-design-system.png                             */
+/* -------------------------------------------------------------------------- */
+
+@theme {
+  /* Primary */
+  --color-lingua-purple: #6c4ef5;
+  --color-lingua-deep-purple: #5b3bf6;
+  --color-lingua-blue: #4d8bff;
+  --color-lingua-green: #21c16b;
+
+  /* Semantic */
+  --color-success: #21c16b;
+  --color-warning: #ffc800;
+  --color-streak: #ff8a00;
+  --color-error: #ff4d4f;
+  --color-info: #4d8bff;
+
+  /* Neutrals */
+  --color-text-primary: #0d132b;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-surface: #f6f7fb;
+  --color-background: #ffffff;
+
+  /* Poppins — font file names must match PostScript names */
+  --font-sans: "Poppins-Regular";
+  --font-poppins: "Poppins-Regular";
+  --font-poppins-medium: "Poppins-Medium";
+  --font-poppins-semibold: "Poppins-SemiBold";
+  --font-poppins-bold: "Poppins-Bold";
+}
+
+@layer base {
+  :root {
+    font-family: var(--font-poppins);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Typography utilities (BEM block: typography)                               */
+/* Usage: className="typography typography--h1 text-text-primary"             */
+/* -------------------------------------------------------------------------- */
+
+@utility typography {
+  font-family: var(--font-poppins);
+  color: var(--color-text-primary);
+}
+
+@utility typography--h1 {
+  font-family: var(--font-poppins-bold);
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+@utility typography--h2 {
+  font-family: var(--font-poppins-semibold);
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+@utility typography--h3 {
+  font-family: var(--font-poppins-semibold);
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+@utility typography--h4 {
+  font-family: var(--font-poppins-medium);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+@utility typography--body-large {
+  font-family: var(--font-poppins);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+@utility typography--body-medium {
+  font-family: var(--font-poppins);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@utility typography--body-small {
+  font-family: var(--font-poppins);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@utility typography--caption {
+  font-family: var(--font-poppins);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* Shorthand aliases (maps to typography scale) */
+@utility text-h1 {
+  font-family: var(--font-poppins-bold);
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+@utility text-h2 {
+  font-family: var(--font-poppins-semibold);
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+@utility text-h3 {
+  font-family: var(--font-poppins-semibold);
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+@utility text-h4 {
+  font-family: var(--font-poppins-medium);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+@utility text-body-large {
+  font-family: var(--font-poppins);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+@utility text-body-medium {
+  font-family: var(--font-poppins);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@utility text-body-small {
+  font-family: var(--font-poppins);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@utility text-caption {
+  font-family: var(--font-poppins);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Surface & layout helpers                                                   */
+/* -------------------------------------------------------------------------- */
+
+@utility screen {
+  flex: 1;
+  background-color: var(--color-background);
+}
+
+@utility screen-surface {
+  flex: 1;
+  background-color: var(--color-surface);
+}
+
+@utility card {
+  background-color: var(--color-background);
+  border-width: 1px;
+  border-color: var(--color-border);
+  border-radius: 16px;
+}
