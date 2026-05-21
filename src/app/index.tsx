@@ -28,5 +28,5 @@ export default function Index() {
     return <Redirect href="/language" />;
   }
 
-  return <Redirect href="/(tabs)/index" />;
+  return <Redirect href="/(tabs)" />;
 }

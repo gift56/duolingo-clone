@@ -1,67 +1,100 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useClerk } from "@clerk/expo";
-import { Link, useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Link } from "expo-router";
+import { useMemo } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TabPlaceholderScreen } from "@/components/tab-placeholder-screen";
+import { ContinueLearningCard } from "@/components/home/continue-learning-card";
+import { DailyGoalCard } from "@/components/home/daily-goal-card";
+import { HomeHeader } from "@/components/home/home-header";
+import { NextUpCard } from "@/components/home/next-up-card";
+import { TodaysPlanSection } from "@/components/home/todays-plan-section";
+import { getLanguageById } from "@/data/languages";
+import { buildHomeScreenData, getContinueSubtitle } from "@/lib/home-data";
 import { useLanguageStore } from "@/store/language-store";
+import { useProgressStore } from "@/store/progress-store";
 
 const TAB_BAR_HEIGHT = 64;
 
 export default function HomeTab() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signOut } = useClerk();
   const tabBarOffset = TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + 16;
-  const clearSelectedLanguage = useLanguageStore(
-    (state) => state.clearSelectedLanguage,
-  );
 
-  const handleClearAsyncStorage = async () => {
-    await AsyncStorage.clear();
-    await useLanguageStore.persist.clearStorage();
-    clearSelectedLanguage();
-    router.replace("/language");
-  };
+  const selectedLanguageId = useLanguageStore((state) => state.selectedLanguageId);
+  const completedLessonIds = useProgressStore(
+    (state) => state.completedLessonIds,
+  );
+  const dailyXp = useProgressStore((state) => state.dailyXp);
+  const streak = useProgressStore((state) => state.streak);
+  const dailyGoal = useProgressStore((state) => state.getDailyGoal());
+
+  const homeData = useMemo(() => {
+    if (!selectedLanguageId) return null;
+    return buildHomeScreenData(
+      selectedLanguageId,
+      completedLessonIds,
+      dailyXp,
+      dailyGoal,
+      streak,
+    );
+  }, [
+    selectedLanguageId,
+    completedLessonIds,
+    dailyXp,
+    dailyGoal,
+    streak,
+  ]);
+
+  const fallbackLanguage = selectedLanguageId
+    ? getLanguageById(selectedLanguageId)
+    : undefined;
+
+  if (!homeData || !fallbackLanguage) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+        <View className="screen flex-1 items-center justify-center px-6">
+          <Text className="text-body-medium text-center text-text-secondary">
+            Select a language to see your home screen.
+          </Text>
+          <Link href="/language" asChild>
+            <Pressable className="mt-4 rounded-2xl bg-lingua-purple px-6 py-3">
+              <Text className="text-body-medium text-white">Choose language</Text>
+            </Pressable>
+          </Link>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const continueSubtitle = getContinueSubtitle(homeData.currentLesson);
 
   return (
-    <View className="screen flex-1">
-      <TabPlaceholderScreen title="Home" />
-      <View
-        className="absolute left-0 right-0 px-6"
-        style={{ bottom: tabBarOffset }}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 8,
+          paddingBottom: tabBarOffset + 16,
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        <Link href="/language" asChild>
-          <Pressable
-            className="mb-3 w-full items-center justify-center rounded-2xl border border-border bg-white py-3 active:opacity-90"
-            accessibilityRole="button"
-            accessibilityLabel="Change language"
-          >
-            <Text className="text-body-small text-text-primary">
-              Change language
-            </Text>
-          </Pressable>
-        </Link>
-        <Pressable
-          onPress={() => void signOut()}
-          className="mb-3 w-full items-center justify-center rounded-2xl border border-border bg-white py-3 active:opacity-90"
-          accessibilityRole="button"
-          accessibilityLabel="Log out"
-        >
-          <Text className="text-body-small text-text-primary">Log out</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => void handleClearAsyncStorage()}
-          className="w-full items-center justify-center rounded-2xl border border-border bg-white py-3 active:opacity-90"
-          accessibilityRole="button"
-          accessibilityLabel="Clear async storage for testing"
-        >
-          <Text className="text-body-small text-text-secondary">
-            Clear async storage (test)
-          </Text>
-        </Pressable>
-      </View>
-    </View>
+        <HomeHeader
+          language={homeData.language}
+          greeting={homeData.greeting}
+          streak={homeData.streak}
+        />
+
+        <DailyGoalCard dailyXp={homeData.dailyXp} dailyGoal={homeData.dailyGoal} />
+
+        <ContinueLearningCard
+          languageName={homeData.language.name}
+          levelSubtitle={continueSubtitle}
+        />
+
+        <TodaysPlanSection items={homeData.todayPlan} />
+
+        <NextUpCard />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
