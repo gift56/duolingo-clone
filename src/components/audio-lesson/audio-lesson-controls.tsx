@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 type AudioLessonControlsProps = {
   micEnabled: boolean;
   subtitlesEnabled: boolean;
+  disabled?: boolean;
   onToggleCamera: () => void;
   onToggleMic: () => void;
   onToggleSubtitles: () => void;
@@ -13,31 +14,39 @@ type AudioLessonControlsProps = {
 export function AudioLessonControls({
   micEnabled,
   subtitlesEnabled,
+  disabled = false,
   onToggleCamera,
   onToggleMic,
   onToggleSubtitles,
   onEndCall,
 }: AudioLessonControlsProps) {
   return (
-    <View className="flex-row items-start justify-center gap-6 px-6 py-4">
+    <View
+      className={`flex-row items-start justify-center gap-6 px-6 py-4 ${
+        disabled ? "opacity-60" : ""
+      }`}
+    >
       <ControlButton
         label="Camera"
         icon="videocam"
         onPress={onToggleCamera}
+        disabled={disabled}
       />
       <ControlButton
         label="Mic"
         icon={micEnabled ? "mic" : "mic-off"}
         onPress={onToggleMic}
         active={micEnabled}
+        disabled={disabled}
       />
       <ControlButton
         label="Subtitles"
         icon="language"
         onPress={onToggleSubtitles}
         active={subtitlesEnabled}
+        disabled={disabled}
       />
-      <EndCallButton onPress={onEndCall} />
+      <EndCallButton onPress={onEndCall} disabled={disabled} />
     </View>
   );
 }
@@ -47,15 +56,18 @@ function ControlButton({
   icon,
   onPress,
   active = true,
+  disabled = false,
 }: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
   active?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
       className="items-center active:opacity-80"
@@ -72,10 +84,17 @@ function ControlButton({
   );
 }
 
-function EndCallButton({ onPress }: { onPress: () => void }) {
+function EndCallButton({
+  onPress,
+  disabled = false,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel="End lesson"
       className="items-center active:opacity-85"

@@ -9,6 +9,10 @@ type AudioLessonStageProps = {
   secondaryText: string;
   subtitlesEnabled: boolean;
   showUserPreview: boolean;
+  userName?: string;
+  userImageUrl?: string;
+  callStatusLabel?: string;
+  isConnecting?: boolean;
   onReplaySpeech?: () => void;
 };
 
@@ -17,6 +21,10 @@ export function AudioLessonStage({
   secondaryText,
   subtitlesEnabled,
   showUserPreview,
+  userName,
+  userImageUrl,
+  callStatusLabel,
+  isConnecting = false,
   onReplaySpeech,
 }: AudioLessonStageProps) {
   return (
@@ -34,14 +42,43 @@ export function AudioLessonStage({
 
       {showUserPreview ? (
         <View
-          className="absolute right-3 top-3 overflow-hidden rounded-xl border-2 border-white/90"
+          className="absolute right-3 top-3 overflow-hidden rounded-xl border-2 border-white/90 bg-white"
           style={styles.userPreview}
         >
           <Image
-            source={images.userLessonPreview}
+            source={
+              userImageUrl ? { uri: userImageUrl } : images.userLessonPreview
+            }
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
           />
+          <View className="absolute bottom-0 left-0 right-0 bg-black/55 px-2 py-1.5">
+            <Text
+              className="text-white"
+              numberOfLines={1}
+              style={{ fontFamily: "Poppins-SemiBold", fontSize: 11 }}
+            >
+              {userName ?? "You"}
+            </Text>
+            {callStatusLabel ? (
+              <Text className="text-[10px] text-white/85" numberOfLines={1}>
+                {callStatusLabel}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {isConnecting ? (
+        <View className="absolute inset-0 items-center justify-center bg-black/25">
+          <View className="rounded-2xl bg-white/95 px-5 py-3">
+            <Text
+              className="text-text-primary"
+              style={{ fontFamily: "Poppins-SemiBold", fontSize: 14 }}
+            >
+              Joining audio lesson…
+            </Text>
+          </View>
         </View>
       ) : null}
 
