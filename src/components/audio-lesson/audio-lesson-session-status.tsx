@@ -77,7 +77,7 @@ export function AudioLessonSessionStatus({
       </View>
       {status === "error" && errorMessage ? (
         <Text
-          className="text-caption mt-1 max-w-[260px] text-center text-error"
+          className="text-caption mt-1 max-w-65 text-center text-error"
           numberOfLines={2}
         >
           {errorMessage}
