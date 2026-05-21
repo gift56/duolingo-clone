@@ -47,8 +47,7 @@
         }
       ],
       "@clerk/expo",
-      "expo-secure-store",
-      "expo-localization"
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

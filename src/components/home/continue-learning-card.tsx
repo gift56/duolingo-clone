@@ -22,7 +22,7 @@ export function ContinueLearningCard({
       accessibilityLabel={`Continue learning ${languageName}`}
     >
       <View
-        className="relative min-h-[148px] flex-row items-center px-5 py-5"
+        className="relative min-h-37 flex-row items-center px-5 py-5"
         style={{
           experimental_backgroundImage:
             "linear-gradient(135deg, #6C4EF5 0%, #5B3BF6 45%, #4D8BFF 100%)",

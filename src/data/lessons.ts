@@ -1,9 +1,11 @@
+import { cafeUnitLessons } from "@/data/cafe-lessons";
+import { extraLanguageLessons } from "@/data/extra-language-lessons";
 import type { LanguageId, Lesson } from "@/types/learning";
 
 const lessonImage = (lessonId: string) =>
   `https://picsum.photos/seed/${lessonId}/400/300`;
 
-export const lessons: Lesson[] = [
+const coreLessons: Lesson[] = [
   // ─── Spanish · Basics 1 ───────────────────────────────────────────
   {
     id: "es-1-1",
@@ -795,6 +797,12 @@ export const lessons: Lesson[] = [
       level: "beginner",
     },
   },
+];
+
+export const lessons: Lesson[] = [
+  ...coreLessons,
+  ...cafeUnitLessons,
+  ...extraLanguageLessons,
 ];
 
 export function getLessonsForLanguage(languageId: LanguageId): Lesson[] {

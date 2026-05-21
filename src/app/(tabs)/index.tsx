@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,12 +10,14 @@ import { NextUpCard } from "@/components/home/next-up-card";
 import { TodaysPlanSection } from "@/components/home/todays-plan-section";
 import { getLanguageById } from "@/data/languages";
 import { buildHomeScreenData, getContinueSubtitle } from "@/lib/home-data";
+import { getFeaturedUnitId } from "@/lib/lesson-screen-data";
 import { useLanguageStore } from "@/store/language-store";
 import { useProgressStore } from "@/store/progress-store";
 
 const TAB_BAR_HEIGHT = 64;
 
 export default function HomeTab() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarOffset = TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + 16;
 
@@ -66,6 +68,9 @@ export default function HomeTab() {
   }
 
   const continueSubtitle = getContinueSubtitle(homeData.currentLesson);
+  const featuredUnitId = selectedLanguageId
+    ? getFeaturedUnitId(selectedLanguageId)
+    : undefined;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
@@ -89,6 +94,15 @@ export default function HomeTab() {
         <ContinueLearningCard
           languageName={homeData.language.name}
           levelSubtitle={continueSubtitle}
+          onContinue={
+            featuredUnitId
+              ? () =>
+                  router.push({
+                    pathname: "/lesson/[unitId]",
+                    params: { unitId: featuredUnitId },
+                  })
+              : undefined
+          }
         />
 
         <TodaysPlanSection items={homeData.todayPlan} />
