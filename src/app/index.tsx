@@ -1,5 +1,5 @@
 import { useAuth, useClerk, useUser } from "@clerk/expo";
-import { Redirect } from "expo-router";
+import { Link, Redirect } from "expo-router";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -33,9 +33,19 @@ export default function Index() {
           </Text>
         ) : null}
 
+        <Link href="/language" asChild>
+          <Pressable
+            className="mt-8 w-full max-w-xs items-center justify-center rounded-2xl bg-lingua-purple py-3.5 active:opacity-90"
+            accessibilityRole="button"
+            accessibilityLabel="Choose a language"
+          >
+            <Text className="text-h4 text-white">Choose a language</Text>
+          </Pressable>
+        </Link>
+
         <Pressable
           onPress={() => void signOut()}
-          className="mt-8 w-full max-w-xs items-center justify-center rounded-2xl border border-border bg-white py-3.5 active:opacity-90"
+          className="mt-4 w-full max-w-xs items-center justify-center rounded-2xl border border-border bg-white py-3.5 active:opacity-90"
           accessibilityRole="button"
           accessibilityLabel="Log out"
         >
