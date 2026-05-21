@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dimensions,
   Pressable,
@@ -17,6 +17,8 @@ import {
 
 import { images } from "@/constants/images";
 import { languages } from "@/data/languages";
+import { useLanguageStoreHydration } from "@/hooks/use-language-store-hydration";
+import { useLanguageStore } from "@/store/language-store";
 import type { Language, LanguageId } from "@/types/learning";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -69,8 +71,21 @@ function LanguageRow({
 export default function LanguageSelectionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const hasHydrated = useLanguageStoreHydration();
+  const storedLanguageId = useLanguageStore((state) => state.selectedLanguageId);
+  const setSelectedLanguage = useLanguageStore(
+    (state) => state.setSelectedLanguage,
+  );
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<LanguageId>("spanish");
+  const [selectedId, setSelectedId] = useState<LanguageId>(
+    storedLanguageId ?? "spanish",
+  );
+
+  useEffect(() => {
+    if (hasHydrated && storedLanguageId) {
+      setSelectedId(storedLanguageId);
+    }
+  }, [hasHydrated, storedLanguageId]);
 
   const filteredLanguages = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -83,8 +98,22 @@ export default function LanguageSelectionScreen() {
   }, [query]);
 
   const handleConfirm = () => {
-    router.back();
+    setSelectedLanguage(selectedId);
+    router.replace("/(tabs)/index");
   };
+
+  if (!hasHydrated) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "#ffffff" }}
+        edges={["top"]}
+      >
+        <View className="screen flex-1 items-center justify-center">
+          <Text className="text-body-medium text-text-secondary">Loading…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
