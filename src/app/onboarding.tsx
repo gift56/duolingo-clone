@@ -69,7 +69,7 @@ export default function OnboardingScreen() {
           />
         </View>
 
-        <Link href="/" asChild>
+        <Link href="/sign-up" asChild>
           <Pressable className="w-full flex-row items-center justify-center rounded-2xl bg-lingua-purple py-4 active:opacity-90">
             <Text className="text-h4 text-white">Get Started</Text>
             <Text className="absolute right-6 text-h4 text-white">›</Text>
