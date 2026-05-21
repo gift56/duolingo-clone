@@ -1,6 +1,6 @@
-import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,10 +15,16 @@ const CODE_LENGTH = 6;
 type VerificationModalProps = {
   visible: boolean;
   onClose: () => void;
+  onVerify: (code: string) => Promise<void>;
+  isVerifying?: boolean;
 };
 
-export function VerificationModal({ visible, onClose }: VerificationModalProps) {
-  const router = useRouter();
+export function VerificationModal({
+  visible,
+  onClose,
+  onVerify,
+  isVerifying = false,
+}: VerificationModalProps) {
   const inputRef = useRef<TextInput>(null);
   const [code, setCode] = useState("");
 
@@ -32,11 +38,14 @@ export function VerificationModal({ visible, onClose }: VerificationModalProps) 
   }, [visible]);
 
   useEffect(() => {
-    if (code.length === CODE_LENGTH) {
-      onClose();
-      router.replace("/");
+    if (code.length !== CODE_LENGTH || isVerifying) {
+      return;
     }
-  }, [code, onClose, router]);
+
+    void onVerify(code).catch(() => {
+      setCode("");
+    });
+  }, [code, isVerifying, onVerify]);
 
   const digits = Array.from({ length: CODE_LENGTH }, (_, i) => code[i] ?? "");
 
@@ -48,9 +57,7 @@ export function VerificationModal({ visible, onClose }: VerificationModalProps) 
           className="bg-black/40 opacity-50"
           onPress={onClose}
         />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <Pressable onPress={(e) => e.stopPropagation()}>
             <View className="rounded-t-3xl bg-white px-6 pb-8 pt-6">
               <Text className="text-h3 text-text-primary">Check your email</Text>
@@ -75,6 +82,12 @@ export function VerificationModal({ visible, onClose }: VerificationModalProps) 
                 ))}
               </Pressable>
 
+              {isVerifying ? (
+                <View className="mt-4 items-center">
+                  <ActivityIndicator color="#6C4EF5" />
+                </View>
+              ) : null}
+
               <TextInput
                 ref={inputRef}
                 value={code}
@@ -85,6 +98,7 @@ export function VerificationModal({ visible, onClose }: VerificationModalProps) 
                 maxLength={CODE_LENGTH}
                 autoComplete="one-time-code"
                 textContentType="oneTimeCode"
+                editable={!isVerifying}
                 style={{
                   position: "absolute",
                   opacity: 0,

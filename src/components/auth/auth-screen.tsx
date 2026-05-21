@@ -1,9 +1,12 @@
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useSignIn, useSignUp } from "@clerk/expo";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +19,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VerificationModal } from "@/components/auth/verification-modal";
 import { images } from "@/constants/images";
+import { useSocialAuth } from "@/hooks/use-social-auth";
+import { navigateAfterAuth } from "@/lib/auth-navigation";
 
 type AuthScreenProps = {
   mode: "sign-up" | "sign-in";
@@ -71,14 +76,17 @@ function SocialButton({
   icon,
   label,
   onPress,
+  disabled,
 }: {
   icon: ReactNode;
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       className="flex-row items-center justify-center rounded-2xl border border-border bg-white py-3.5 active:opacity-90"
     >
       <View className="absolute left-5">{icon}</View>
@@ -100,12 +108,140 @@ function Divider() {
 export function AuthScreen({ mode }: AuthScreenProps) {
   const router = useRouter();
   const isSignUp = mode === "sign-up";
+  const { signUp, fetchStatus: signUpFetchStatus } = useSignUp();
+  const { signIn, fetchStatus: signInFetchStatus } = useSignIn();
+  const { signInWithGoogle } = useSocialAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(true);
   const [verificationVisible, setVerificationVisible] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [pendingMfa, setPendingMfa] = useState(false);
+
+  const isLoading =
+    signUpFetchStatus === "fetching" || signInFetchStatus === "fetching" || isVerifying;
 
   const openVerification = () => setVerificationVisible(true);
+
+  const handleSignUp = async () => {
+    const { error } = await signUp.password({
+      emailAddress: email,
+      password,
+    });
+
+    if (error) {
+      Alert.alert("Sign up failed", error.message ?? "Please check your details and try again.");
+      return;
+    }
+
+    const sendError = (await signUp.verifications.sendEmailCode()).error;
+    if (sendError) {
+      Alert.alert("Verification failed", sendError.message ?? "Could not send verification code.");
+      return;
+    }
+
+    openVerification();
+  };
+
+  const handleSignIn = async () => {
+    const { error } = await signIn.emailCode.sendCode({ emailAddress: email });
+
+    if (error) {
+      Alert.alert("Sign in failed", error.message ?? "Please check your email and try again.");
+      return;
+    }
+
+    setPendingMfa(false);
+    openVerification();
+  };
+
+  const handlePrimarySubmit = async () => {
+    if (!email.trim()) {
+      Alert.alert("Missing email", "Please enter your email address.");
+      return;
+    }
+
+    if (isSignUp) {
+      if (!password) {
+        Alert.alert("Missing password", "Please enter a password.");
+        return;
+      }
+      await handleSignUp();
+      return;
+    }
+
+    await handleSignIn();
+  };
+
+  const handleVerify = useCallback(
+    async (code: string) => {
+      setIsVerifying(true);
+
+      try {
+        if (isSignUp) {
+          const { error } = await signUp.verifications.verifyEmailCode({ code });
+          if (error) {
+            throw new Error(error.message ?? "Invalid verification code.");
+          }
+
+          if (signUp.status === "complete") {
+            await signUp.finalize({
+              navigate: ({ session, decorateUrl }) => {
+                setVerificationVisible(false);
+                navigateAfterAuth(router, decorateUrl, session);
+              },
+            });
+          } else {
+            throw new Error("Sign-up is not complete. Please try again.");
+          }
+          return;
+        }
+
+        if (pendingMfa) {
+          await signIn.mfa.verifyEmailCode({ code });
+        } else {
+          const { error } = await signIn.emailCode.verifyCode({ code });
+          if (error) {
+            throw new Error(error.message ?? "Invalid verification code.");
+          }
+        }
+
+        if (signIn.status === "needs_client_trust") {
+          const emailCodeFactor = signIn.supportedSecondFactors?.find(
+            (factor) => factor.strategy === "email_code",
+          );
+
+          if (emailCodeFactor) {
+            await signIn.mfa.sendEmailCode();
+            setPendingMfa(true);
+            throw new Error("RESEND_MFA");
+          }
+        }
+
+        if (signIn.status === "complete") {
+          await signIn.finalize({
+            navigate: ({ session, decorateUrl }) => {
+              setVerificationVisible(false);
+              setPendingMfa(false);
+              navigateAfterAuth(router, decorateUrl, session);
+            },
+          });
+        } else {
+          throw new Error("Sign-in is not complete. Please try again.");
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Verification failed.";
+        if (message !== "RESEND_MFA") {
+          Alert.alert("Verification failed", message);
+        }
+        throw err;
+      } finally {
+        setIsVerifying(false);
+      }
+    },
+    [isSignUp, pendingMfa, router, signIn, signUp],
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
@@ -166,32 +302,30 @@ export function AuthScreen({ mode }: AuthScreenProps) {
               ) : null}
             </View>
 
+            {isSignUp ? (
+              <View nativeID="clerk-captcha" style={{ height: 0, overflow: "hidden" }} />
+            ) : null}
+
             <Pressable
-              onPress={openVerification}
+              onPress={() => void handlePrimarySubmit()}
+              disabled={isLoading}
               className="mt-6 w-full items-center justify-center rounded-2xl bg-lingua-purple py-4 active:opacity-90"
             >
-              <Text className="text-h4 text-white">{isSignUp ? "Sign Up" : "Sign In"}</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-h4 text-white">{isSignUp ? "Sign Up" : "Sign In"}</Text>
+              )}
             </Pressable>
 
             <Divider />
 
-            <View className="gap-3">
-              <SocialButton
-                icon={<FontAwesome5 name="google" size={20} color="#EA4335" />}
-                label="Continue with Google"
-                onPress={openVerification}
-              />
-              <SocialButton
-                icon={<FontAwesome5 name="facebook" size={20} color="#1877F2" />}
-                label="Continue with Facebook"
-                onPress={openVerification}
-              />
-              <SocialButton
-                icon={<FontAwesome5 name="apple" size={22} color="#000000" />}
-                label="Continue with Apple"
-                onPress={openVerification}
-              />
-            </View>
+            <SocialButton
+              icon={<FontAwesome5 name="google" size={20} color="#EA4335" />}
+              label="Continue with Google"
+              onPress={() => void signInWithGoogle()}
+              disabled={isLoading}
+            />
 
             <View className="mt-8 flex-row items-center justify-center">
               <Text className="text-body-medium text-text-secondary">
@@ -214,7 +348,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
       <VerificationModal
         visible={verificationVisible}
-        onClose={() => setVerificationVisible(false)}
+        onClose={() => {
+          setVerificationVisible(false);
+          setPendingMfa(false);
+        }}
+        onVerify={handleVerify}
+        isVerifying={isVerifying}
       />
     </SafeAreaView>
   );
