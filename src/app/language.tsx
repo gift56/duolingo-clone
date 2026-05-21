@@ -99,7 +99,7 @@ export default function LanguageSelectionScreen() {
 
   const handleConfirm = () => {
     setSelectedLanguage(selectedId);
-    router.replace("/(tabs)/index");
+    router.replace("/(tabs)");
   };
 
   if (!hasHydrated) {

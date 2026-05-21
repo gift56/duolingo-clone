@@ -32,7 +32,11 @@ export interface Unit {
   title: string;
   description: string;
   order: number;
+  /** Hero banner on the unit lessons screen */
+  imageUrl?: string;
 }
+
+export type LessonCardStatus = "completed" | "in_progress" | "not_started";
 
 export type ActivityType =
   | "listen"
