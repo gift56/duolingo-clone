@@ -13,6 +13,7 @@ import { AudioLessonFeedbackCard } from "@/components/audio-lesson/audio-lesson-
 import { AudioLessonHeader } from "@/components/audio-lesson/audio-lesson-header";
 import { AudioLessonStage } from "@/components/audio-lesson/audio-lesson-stage";
 import { LessonEmbeddedTabBar } from "@/components/audio-lesson/lesson-embedded-tab-bar";
+import { useLiveCaptions } from "@/hooks/use-live-captions";
 import { useStreamAudioLesson } from "@/hooks/use-stream-audio-lesson";
 import { useVisionAgent } from "@/hooks/use-vision-agent";
 import {
@@ -56,6 +57,11 @@ export default function AudioLessonScreen() {
     participantCount: stream.participantCount,
   });
 
+  const liveCaptions = useLiveCaptions({
+    call: stream.call,
+    enabled: stream.isInCall && visionAgent.isConnected && subtitlesEnabled,
+  });
+
   if (stream.client && !streamShellMountedRef.current) {
     streamShellMountedRef.current = true;
   }
@@ -93,16 +99,28 @@ export default function AudioLessonScreen() {
   const { sessionSubtitle, teacherBubble, phraseQueue, feedback, focusLabel } =
     screenData;
 
-  const activeBubble =
+  const staticBubble =
     phraseIndex === 0
       ? teacherBubble
       : getPhraseAtIndex(phraseQueue, phraseIndex - 1);
 
+  const useLiveCaptionText =
+    stream.isInCall && visionAgent.isConnected && liveCaptions.hasLiveCaption;
+
+  const stagePrimaryText = useLiveCaptionText
+    ? (liveCaptions.display?.primary ?? staticBubble.primary)
+    : staticBubble.primary;
+
+  const stageSecondaryText = useLiveCaptionText
+    ? (liveCaptions.display?.secondary ?? staticBubble.secondary)
+    : staticBubble.secondary;
+
+  const captionIsPartial = useLiveCaptionText
+    ? (liveCaptions.display?.isPartial ?? false)
+    : false;
+
   const handleToggleSubtitles = () => {
     setSubtitlesEnabled((prev) => !prev);
-    if (phraseQueue.length > 0) {
-      setPhraseIndex((prev) => (prev + 1) % (phraseQueue.length + 1));
-    }
   };
 
   const handleLeaveLesson = () => {
@@ -184,11 +202,13 @@ export default function AudioLessonScreen() {
         ) : null}
 
         <AudioLessonStage
-          primaryText={activeBubble.primary}
-          secondaryText={activeBubble.secondary}
+          primaryText={stagePrimaryText}
+          secondaryText={stageSecondaryText}
           subtitlesEnabled={subtitlesEnabled}
           isConnecting={stream.isConnecting}
           isInCall={stream.isInCall}
+          captionIsPartial={captionIsPartial}
+          activeSpeaker={liveCaptions.display?.speaker}
           onReplaySpeech={() => setPhraseIndex(0)}
         />
 
