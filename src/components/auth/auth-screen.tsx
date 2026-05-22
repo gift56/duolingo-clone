@@ -244,18 +244,19 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          className="screen"
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View className="px-6">
+          <ScrollView
+            className="screen"
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="px-6">
             <Pressable
               onPress={() => router.back()}
               className="mb-4 h-10 w-10 items-center justify-center active:opacity-70"
@@ -342,9 +343,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                 </Pressable>
               </Link>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
 
       <VerificationModal
         visible={verificationVisible}
@@ -355,6 +357,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         onVerify={handleVerify}
         isVerifying={isVerifying}
       />
-    </SafeAreaView>
+    </>
   );
 }

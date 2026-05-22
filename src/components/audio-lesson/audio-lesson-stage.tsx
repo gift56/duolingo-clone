@@ -1,6 +1,13 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { images } from "@/constants/images";
 
@@ -8,7 +15,8 @@ type AudioLessonStageProps = {
   primaryText: string;
   secondaryText: string;
   subtitlesEnabled: boolean;
-  showUserPreview: boolean;
+  isConnecting?: boolean;
+  isInCall?: boolean;
   onReplaySpeech?: () => void;
 };
 
@@ -16,7 +24,8 @@ export function AudioLessonStage({
   primaryText,
   secondaryText,
   subtitlesEnabled,
-  showUserPreview,
+  isConnecting = false,
+  isInCall = false,
   onReplaySpeech,
 }: AudioLessonStageProps) {
   return (
@@ -27,55 +36,69 @@ export function AudioLessonStage({
         contentFit="cover"
         blurRadius={Platform.OS === "web" ? 0 : 6}
       />
-      <View
-        style={StyleSheet.absoluteFill}
-        className="bg-black/20"
-      />
-
-      {showUserPreview ? (
-        <View
-          className="absolute right-3 top-3 overflow-hidden rounded-xl border-2 border-white/90"
-          style={styles.userPreview}
-        >
-          <Image
-            source={images.userLessonPreview}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-          />
-        </View>
-      ) : null}
+      <View style={StyleSheet.absoluteFill} className="bg-black/20" />
 
       <View className="flex-1 items-center justify-end px-4 pb-3">
         <Image
           source={images.mascotWelcome}
-          style={{ width: 220, height: 220 }}
+          style={{ width: 220, height: 220, opacity: isConnecting ? 0.85 : 1 }}
           contentFit="contain"
         />
 
         <View style={styles.speechBubble} className="w-full px-1">
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 pr-3">
-              <Text
-                className="text-text-primary"
-                style={{ fontFamily: "Poppins-Bold", fontSize: 18, lineHeight: 24 }}
-              >
-                {primaryText}
-              </Text>
-              {subtitlesEnabled ? (
-                <Text className="text-body-medium mt-1 text-text-secondary">
-                  {secondaryText}
+          {isConnecting ? (
+            <View className="items-center py-2">
+              <View style={styles.bubbleLoaderBackdrop} className="items-center px-4 py-3">
+                <ActivityIndicator size="small" color="#6C4EF5" />
+                <Text
+                  className="mt-2 text-text-primary"
+                  style={{ fontFamily: "Poppins-SemiBold", fontSize: 15 }}
+                >
+                  Connecting…
                 </Text>
-              ) : null}
+                <Text
+                  className="text-text-primary mt-1"
+                  style={{ fontFamily: "Poppins-Bold", fontSize: 18 }}
+                >
+                  {primaryText}
+                </Text>
+                {subtitlesEnabled ? (
+                  <Text className="text-body-small mt-0.5 text-text-secondary">
+                    {secondaryText}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-            <Pressable
-              onPress={onReplaySpeech}
-              accessibilityRole="button"
-              accessibilityLabel="Replay teacher audio"
-              className="h-9 w-9 items-center justify-center rounded-full bg-[#F3F0FF] active:opacity-80"
-            >
-              <Ionicons name="volume-medium" size={20} color="#6C4EF5" />
-            </Pressable>
-          </View>
+          ) : (
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 pr-3">
+                <View className="flex-row items-center">
+                  <Text
+                    className="text-text-primary"
+                    style={{ fontFamily: "Poppins-Bold", fontSize: 18, lineHeight: 24 }}
+                  >
+                    {primaryText}
+                  </Text>
+                  {isInCall ? (
+                    <View className="ml-2 h-2 w-2 rounded-full bg-success" />
+                  ) : null}
+                </View>
+                {subtitlesEnabled ? (
+                  <Text className="text-body-medium mt-1 text-text-secondary">
+                    {secondaryText}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                onPress={onReplaySpeech}
+                accessibilityRole="button"
+                accessibilityLabel="Replay teacher audio"
+                className="h-9 w-9 items-center justify-center rounded-full bg-[#F3F0FF] active:opacity-80"
+              >
+                <Ionicons name="volume-medium" size={20} color="#6C4EF5" />
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -83,18 +106,10 @@ export function AudioLessonStage({
 }
 
 const styles = StyleSheet.create({
-  userPreview: {
-    width: 88,
-    height: 112,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: { elevation: 6 },
-    }),
+  bubbleLoaderBackdrop: {
+    backgroundColor: "rgba(13, 19, 43, 0.08)",
+    borderRadius: 14,
+    width: "100%",
   },
   speechBubble: {
     backgroundColor: "#FFFFFF",
