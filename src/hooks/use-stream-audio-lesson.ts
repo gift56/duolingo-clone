@@ -36,6 +36,8 @@ export function useStreamAudioLesson({
   const [participantCount, setParticipantCount] = useState(0);
   const [startNonce, setStartNonce] = useState(1);
   const [isEndingCall, setIsEndingCall] = useState(false);
+  const [callId, setCallId] = useState<string | undefined>();
+  const [callType, setCallType] = useState<string | undefined>();
 
   const callRef = useRef<Call | undefined>(undefined);
   const clientRef = useRef<StreamVideoClient | undefined>(undefined);
@@ -123,6 +125,8 @@ export function useStreamAudioLesson({
 
       callRef.current = undefined;
       setCall(undefined);
+      setCallId(undefined);
+      setCallType(undefined);
 
       await disconnectClient();
     } finally {
@@ -234,6 +238,8 @@ export function useStreamAudioLesson({
         streamCall = videoClient.call(callMeta.callType, callMeta.callId);
         callRef.current = streamCall;
         setCall(streamCall);
+        setCallId(callMeta.callId);
+        setCallType(callMeta.callType);
 
         callManager.start({
           audioRole: "communicator",
@@ -279,6 +285,8 @@ export function useStreamAudioLesson({
         callManager.stop();
         callRef.current = undefined;
         setCall(undefined);
+        setCallId(undefined);
+        setCallType(undefined);
         if (videoClient) {
           try {
             await videoClient.disconnectUser();
@@ -309,6 +317,8 @@ export function useStreamAudioLesson({
             await stopCallMedia();
             callRef.current = undefined;
             setCall(undefined);
+            setCallId(undefined);
+            setCallType(undefined);
             await disconnectClient();
           } finally {
             isDisconnectingRef.current = false;
@@ -362,6 +372,8 @@ export function useStreamAudioLesson({
     errorMessage,
     client,
     call,
+    callId,
+    callType,
     micEnabled,
     participantCount,
     isConnecting: status === "connecting",

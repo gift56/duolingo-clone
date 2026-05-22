@@ -3,6 +3,7 @@ import { StreamClient } from "@stream-io/node-sdk";
 import type { StreamLessonCallCustomData } from "@/types/stream";
 
 export const AUDIO_LESSON_CALL_TYPE = "default";
+export const VISION_AGENT_USER_ID = "lingua-ai-teacher";
 
 let streamClient: StreamClient | null = null;
 
@@ -54,11 +55,19 @@ export async function createAudioLessonCall(params: {
   const client = getStreamServerClient();
   const call = client.video.call(AUDIO_LESSON_CALL_TYPE, params.callId);
 
+  await upsertStreamUser({
+    userId: VISION_AGENT_USER_ID,
+    name: "Lingua Teacher",
+  });
+
   await call.getOrCreate({
     data: {
       created_by_id: params.createdById,
       custom: params.custom,
-      members: [{ user_id: params.createdById, role: "admin" }],
+      members: [
+        { user_id: params.createdById, role: "admin" },
+        { user_id: VISION_AGENT_USER_ID, role: "admin" },
+      ],
       settings_override: {
         audio: { mic_default_on: true, default_device: "speaker" },
         video: {
