@@ -14,6 +14,7 @@ import { AudioLessonHeader } from "@/components/audio-lesson/audio-lesson-header
 import { AudioLessonStage } from "@/components/audio-lesson/audio-lesson-stage";
 import { LessonEmbeddedTabBar } from "@/components/audio-lesson/lesson-embedded-tab-bar";
 import { useStreamAudioLesson } from "@/hooks/use-stream-audio-lesson";
+import { useVisionAgent } from "@/hooks/use-vision-agent";
 import {
   buildAudioLessonScreenData,
   getPhraseAtIndex,
@@ -46,6 +47,13 @@ export default function AudioLessonScreen() {
     screenData: screenData!,
     unitId: unitId ?? "",
     enabled: Boolean(screenData && isSignedIn && unitId),
+  });
+
+  const visionAgent = useVisionAgent({
+    callId: stream.callId,
+    callType: stream.callType,
+    enabled: stream.isInCall,
+    participantCount: stream.participantCount,
   });
 
   if (stream.client && !streamShellMountedRef.current) {
@@ -104,6 +112,7 @@ export default function AudioLessonScreen() {
 
     void (async () => {
       try {
+        await visionAgent.stopAgent();
         await stream.endCall();
         // Give native audio/WebRTC one frame to settle before navigating away.
         await new Promise<void>((resolve) => {
@@ -128,13 +137,15 @@ export default function AudioLessonScreen() {
         streak={streak}
         callStatus={stream.status}
         callErrorMessage={stream.errorMessage}
+        agentStatus={visionAgent.status}
+        agentErrorMessage={visionAgent.errorMessage}
         participantCount={stream.participantCount}
         userName={userName}
         onBack={handleLeaveLesson}
       />
 
       <View className="min-h-0 flex-1">
-        {stream.status === "error" ? (
+        {stream.status === "error" || visionAgent.status === "failed" ? (
           <View className="mx-4 mb-3 items-center rounded-2xl border border-border bg-surface px-4 py-4">
             <Text
               className="text-text-primary text-center"
@@ -147,9 +158,18 @@ export default function AudioLessonScreen() {
                 {stream.errorMessage}
               </Text>
             ) : null}
+            {visionAgent.errorMessage ? (
+              <Text className="text-body-small mt-2 text-center text-error">
+                {visionAgent.errorMessage}
+              </Text>
+            ) : null}
             <Pressable
               onPress={() => {
-                void stream.retry();
+                if (stream.status === "error") {
+                  void stream.retry();
+                } else {
+                  void visionAgent.retry();
+                }
               }}
               className="mt-4 rounded-full bg-primary px-6 py-3 active:opacity-85"
             >

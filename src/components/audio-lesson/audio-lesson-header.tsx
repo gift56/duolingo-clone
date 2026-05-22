@@ -2,15 +2,18 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
+import { AudioLessonAgentStatus } from "@/components/audio-lesson/audio-lesson-agent-status";
 import { AudioLessonSessionStatus } from "@/components/audio-lesson/audio-lesson-session-status";
 import { images } from "@/constants/images";
-import type { StreamCallStatus } from "@/types/stream";
+import type { StreamCallStatus, VisionAgentStatus } from "@/types/stream";
 
 type AudioLessonHeaderProps = {
   sessionSubtitle: string;
   streak: number;
   callStatus: StreamCallStatus;
   callErrorMessage?: string | null;
+  agentStatus: VisionAgentStatus;
+  agentErrorMessage?: string | null;
   participantCount?: number;
   userName?: string;
   onBack: () => void;
@@ -21,6 +24,8 @@ export function AudioLessonHeader({
   streak,
   callStatus,
   callErrorMessage,
+  agentStatus,
+  agentErrorMessage,
   participantCount,
   userName,
   onBack,
@@ -49,6 +54,12 @@ export function AudioLessonHeader({
           errorMessage={callErrorMessage}
           participantCount={participantCount}
         />
+        <View className="mt-1">
+          <AudioLessonAgentStatus
+            status={agentStatus}
+            errorMessage={agentErrorMessage}
+          />
+        </View>
         <Text
           className="text-caption mt-0.5 text-center text-text-secondary"
           numberOfLines={1}

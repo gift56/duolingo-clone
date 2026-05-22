@@ -3,6 +3,11 @@
 # dependencies
 node_modules/
 
+# Python Vision Agent
+vision-agent/.venv/
+vision-agent/__pycache__/
+vision-agent/.pytest_cache/
+
 # Expo
 .expo/
 dist/
@@ -32,6 +37,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
