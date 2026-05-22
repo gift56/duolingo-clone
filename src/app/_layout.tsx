@@ -9,8 +9,11 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { fontAssets } from "@/lib/fonts";
 import { publishableKey } from "@/lib/clerk";
+import { configureStreamLogBox } from "@/lib/stream-client-config";
+import { fontAssets } from "@/lib/fonts";
+
+configureStreamLogBox();
 
 SplashScreen.preventAutoHideAsync();
 

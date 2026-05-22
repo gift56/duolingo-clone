@@ -1,7 +1,7 @@
 import { useAuth, useUser } from "@clerk/expo";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   StreamCall,
@@ -19,25 +19,6 @@ import {
   getPhraseAtIndex,
 } from "@/lib/audio-lesson-data";
 import { useProgressStore } from "@/store/progress-store";
-import type { StreamCallStatus } from "@/types/stream";
-
-function getPreviewStatusLabel(status: StreamCallStatus): string {
-  switch (status) {
-    case "joined":
-      return "Live";
-    case "muted":
-      return "Muted";
-    case "connecting":
-    case "loading":
-      return "Connecting";
-    case "error":
-      return "Offline";
-    case "ended":
-      return "Ended";
-    default:
-      return "Ready";
-  }
-}
 
 export default function AudioLessonScreen() {
   const router = useRouter();
@@ -56,8 +37,10 @@ export default function AudioLessonScreen() {
   }, [lessonId]);
 
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
-  const [showUserPreview, setShowUserPreview] = useState(true);
   const [phraseIndex, setPhraseIndex] = useState(0);
+  const [isLeavingLesson, setIsLeavingLesson] = useState(false);
+  const streamShellMountedRef = useRef(false);
+  const isLeavingLessonRef = useRef(false);
 
   const stream = useStreamAudioLesson({
     screenData: screenData!,
@@ -65,12 +48,15 @@ export default function AudioLessonScreen() {
     enabled: Boolean(screenData && isSignedIn && unitId),
   });
 
+  if (stream.client && !streamShellMountedRef.current) {
+    streamShellMountedRef.current = true;
+  }
+
   const userName =
     user?.fullName?.trim() ||
     user?.firstName?.trim() ||
     user?.username ||
     "Learner";
-  const userImageUrl = user?.imageUrl ?? undefined;
 
   if (!screenData) {
     return (
@@ -111,10 +97,29 @@ export default function AudioLessonScreen() {
     }
   };
 
-  const handleEndCall = async () => {
-    await stream.endCall();
-    router.back();
+  const handleLeaveLesson = () => {
+    if (isLeavingLessonRef.current) return;
+    isLeavingLessonRef.current = true;
+    setIsLeavingLesson(true);
+
+    void (async () => {
+      try {
+        await stream.endCall();
+        // Give native audio/WebRTC one frame to settle before navigating away.
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => resolve());
+          });
+        });
+        router.back();
+      } finally {
+        isLeavingLessonRef.current = false;
+        setIsLeavingLesson(false);
+      }
+    })();
   };
+
+  const controlsDisabled = isLeavingLesson || stream.isEndingCall;
 
   const lessonBody = (
     <>
@@ -125,22 +130,17 @@ export default function AudioLessonScreen() {
         callErrorMessage={stream.errorMessage}
         participantCount={stream.participantCount}
         userName={userName}
-        onBack={() => {
-          void stream.endCall();
-          router.back();
-        }}
+        onBack={handleLeaveLesson}
       />
 
       <View className="min-h-0 flex-1">
-        {stream.status === "idle" || stream.status === "error" ? (
+        {stream.status === "error" ? (
           <View className="mx-4 mb-3 items-center rounded-2xl border border-border bg-surface px-4 py-4">
             <Text
               className="text-text-primary text-center"
               style={{ fontFamily: "Poppins-SemiBold", fontSize: 16 }}
             >
-              {stream.status === "error"
-                ? "Could not connect to the audio lesson"
-                : "Start your audio lesson"}
+              Could not connect
             </Text>
             {stream.errorMessage ? (
               <Text className="text-body-small mt-2 text-center text-error">
@@ -148,16 +148,16 @@ export default function AudioLessonScreen() {
               </Text>
             ) : null}
             <Pressable
-              onPress={
-                stream.status === "error" ? stream.retry : stream.startCall
-              }
+              onPress={() => {
+                void stream.retry();
+              }}
               className="mt-4 rounded-full bg-primary px-6 py-3 active:opacity-85"
             >
               <Text
                 className="text-white"
                 style={{ fontFamily: "Poppins-SemiBold", fontSize: 15 }}
               >
-                {stream.status === "error" ? "Try again" : "Start call"}
+                Try again
               </Text>
             </Pressable>
           </View>
@@ -167,28 +167,21 @@ export default function AudioLessonScreen() {
           primaryText={activeBubble.primary}
           secondaryText={activeBubble.secondary}
           subtitlesEnabled={subtitlesEnabled}
-          showUserPreview={showUserPreview}
-          userName={userName}
-          userImageUrl={userImageUrl}
-          callStatusLabel={getPreviewStatusLabel(stream.status)}
           isConnecting={stream.isConnecting}
-          onReplaySpeech={() => {
-            setPhraseIndex(0);
-          }}
+          isInCall={stream.isInCall}
+          onReplaySpeech={() => setPhraseIndex(0)}
         />
 
         <AudioLessonControls
           micEnabled={stream.micEnabled}
           subtitlesEnabled={subtitlesEnabled}
-          disabled={stream.isConnecting || stream.status === "ended"}
-          onToggleCamera={() => setShowUserPreview((prev) => !prev)}
+          micDisabled={!stream.isInCall || controlsDisabled}
+          endCallDisabled={controlsDisabled}
           onToggleMic={() => {
             void stream.toggleMic();
           }}
           onToggleSubtitles={handleToggleSubtitles}
-          onEndCall={() => {
-            void handleEndCall();
-          }}
+          onEndCall={handleLeaveLesson}
         />
 
         <AudioLessonFeedbackCard ratings={feedback} focusLabel={focusLabel} />
@@ -198,25 +191,18 @@ export default function AudioLessonScreen() {
     </>
   );
 
+  const streamClient = stream.client;
+  const streamCall = stream.call;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
-      {!stream.client ? (
-        lessonBody
-      ) : (
-        <StreamVideo client={stream.client}>
-          {stream.call ? (
-            <StreamCall call={stream.call}>{lessonBody}</StreamCall>
-          ) : (
-            lessonBody
-          )}
+      {streamShellMountedRef.current && streamClient && streamCall ? (
+        <StreamVideo client={streamClient}>
+          <StreamCall call={streamCall}>{lessonBody}</StreamCall>
         </StreamVideo>
+      ) : (
+        lessonBody
       )}
-
-      {stream.isConnecting ? (
-        <View className="pointer-events-none absolute inset-0 items-center justify-center">
-          <ActivityIndicator size="large" color="#6C4EF5" />
-        </View>
-      ) : null}
     </SafeAreaView>
   );
 }

@@ -4,8 +4,8 @@ import { Pressable, Text, View } from "react-native";
 type AudioLessonControlsProps = {
   micEnabled: boolean;
   subtitlesEnabled: boolean;
-  disabled?: boolean;
-  onToggleCamera: () => void;
+  micDisabled?: boolean;
+  endCallDisabled?: boolean;
   onToggleMic: () => void;
   onToggleSubtitles: () => void;
   onEndCall: () => void;
@@ -14,39 +14,28 @@ type AudioLessonControlsProps = {
 export function AudioLessonControls({
   micEnabled,
   subtitlesEnabled,
-  disabled = false,
-  onToggleCamera,
+  micDisabled = false,
+  endCallDisabled = false,
   onToggleMic,
   onToggleSubtitles,
   onEndCall,
 }: AudioLessonControlsProps) {
   return (
-    <View
-      className={`flex-row items-start justify-center gap-6 px-6 py-4 ${
-        disabled ? "opacity-60" : ""
-      }`}
-    >
-      <ControlButton
-        label="Camera"
-        icon="videocam"
-        onPress={onToggleCamera}
-        disabled={disabled}
-      />
+    <View className="flex-row items-start justify-center gap-8 px-6 py-4">
       <ControlButton
         label="Mic"
         icon={micEnabled ? "mic" : "mic-off"}
         onPress={onToggleMic}
         active={micEnabled}
-        disabled={disabled}
+        disabled={micDisabled}
       />
       <ControlButton
         label="Subtitles"
         icon="language"
         onPress={onToggleSubtitles}
         active={subtitlesEnabled}
-        disabled={disabled}
       />
-      <EndCallButton onPress={onEndCall} disabled={disabled} />
+      <EndCallButton onPress={onEndCall} disabled={endCallDisabled} />
     </View>
   );
 }
@@ -75,7 +64,7 @@ function ControlButton({
       <View
         className={`h-14 w-14 items-center justify-center rounded-full border border-border bg-white ${
           active ? "" : "opacity-80"
-        }`}
+        } ${disabled ? "opacity-50" : ""}`}
       >
         <Ionicons name={icon} size={24} color="#0D132B" />
       </View>
@@ -97,7 +86,7 @@ function EndCallButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel="End lesson"
-      className="items-center active:opacity-85"
+      className={`items-center active:opacity-85 ${disabled ? "opacity-50" : ""}`}
     >
       <View className="h-14 w-14 items-center justify-center rounded-full bg-error">
         <Ionicons name="call" size={24} color="#FFFFFF" style={{ transform: [{ rotate: "135deg" }] }} />

@@ -2,7 +2,7 @@ import { StreamClient } from "@stream-io/node-sdk";
 
 import type { StreamLessonCallCustomData } from "@/types/stream";
 
-export const AUDIO_LESSON_CALL_TYPE = "audio_room";
+export const AUDIO_LESSON_CALL_TYPE = "default";
 
 let streamClient: StreamClient | null = null;
 
@@ -61,7 +61,10 @@ export async function createAudioLessonCall(params: {
       members: [{ user_id: params.createdById, role: "admin" }],
       settings_override: {
         audio: { mic_default_on: true, default_device: "speaker" },
-        video: { camera_default_on: false },
+        video: {
+          camera_default_on: false,
+          target_resolution: { width: 240, height: 240, bitrate: 300_000 },
+        },
       },
     },
   });

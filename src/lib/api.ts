@@ -2,7 +2,6 @@ import Constants from "expo-constants";
 
 /**
  * Resolves the Expo dev server / API route base URL for native clients.
- * Falls back to EXPO_PUBLIC_API_URL in production builds.
  */
 export function getApiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL;
@@ -11,8 +10,7 @@ export function getApiBaseUrl(): string {
   }
 
   const hostUri =
-    Constants.expoConfig?.hostUri ??
-    Constants.expoGoConfig?.debuggerHost;
+    Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
 
   if (hostUri) {
     const host = hostUri.split(":")[0];

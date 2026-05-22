@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<
     textColor: "#5C6478",
   },
   loading: {
-    label: "Loading…",
+    label: "Connecting…",
     dotColor: "#6C4EF5",
     textColor: "#6C4EF5",
   },

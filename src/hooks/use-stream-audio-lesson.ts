@@ -1,4 +1,5 @@
 import { useAuth, useUser } from "@clerk/expo";
+import { useFocusEffect } from "expo-router";
 import {
   callManager,
   StreamVideoClient,
@@ -8,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createStreamAudioCall, fetchStreamToken } from "@/lib/stream-api";
 import type { AudioLessonScreenData } from "@/lib/audio-lesson-data";
+import { configureStreamLogBox } from "@/lib/stream-client-config";
 import type { StreamCallStatus } from "@/types/stream";
 
 type UseStreamAudioLessonParams = {
@@ -16,25 +18,13 @@ type UseStreamAudioLessonParams = {
   enabled: boolean;
 };
 
-type UseStreamAudioLessonResult = {
-  status: StreamCallStatus;
-  errorMessage: string | null;
-  client: StreamVideoClient | undefined;
-  call: Call | undefined;
-  micEnabled: boolean;
-  participantCount: number;
-  isConnecting: boolean;
-  startCall: () => void;
-  toggleMic: () => Promise<void>;
-  endCall: () => Promise<void>;
-  retry: () => void;
-};
-
 export function useStreamAudioLesson({
   screenData,
   unitId,
   enabled,
-}: UseStreamAudioLessonParams): UseStreamAudioLessonResult {
+}: UseStreamAudioLessonParams) {
+  configureStreamLogBox();
+
   const { getToken, isSignedIn } = useAuth();
   const { user } = useUser();
 
@@ -42,11 +32,24 @@ export function useStreamAudioLesson({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [client, setClient] = useState<StreamVideoClient | undefined>();
   const [call, setCall] = useState<Call | undefined>();
-  const [micEnabled, setMicEnabled] = useState(true);
+  const [micEnabled, setMicEnabled] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
   const [startNonce, setStartNonce] = useState(1);
+  const [isEndingCall, setIsEndingCall] = useState(false);
 
-  const activeRef = useRef(false);
+  const callRef = useRef<Call | undefined>(undefined);
+  const clientRef = useRef<StreamVideoClient | undefined>(undefined);
+  const hasActiveSessionRef = useRef(false);
+  const isDisconnectingRef = useRef(false);
+  const callMediaStoppedRef = useRef(false);
+  const isEndingCallRef = useRef(false);
+  const screenDataRef = useRef(screenData);
+  const unitIdRef = useRef(unitId);
+  const getTokenRef = useRef(getToken);
+
+  screenDataRef.current = screenData;
+  unitIdRef.current = unitId;
+  getTokenRef.current = getToken;
 
   const userName =
     user?.fullName?.trim() ||
@@ -54,69 +57,135 @@ export function useStreamAudioLesson({
     user?.username ||
     "Learner";
   const userImageUrl = user?.imageUrl ?? undefined;
+  const userNameRef = useRef(userName);
+  const userImageUrlRef = useRef(userImageUrl);
+  userNameRef.current = userName;
+  userImageUrlRef.current = userImageUrl;
 
-  const getClerkSessionToken = useCallback(async () => {
-    const token = await getToken();
-    if (!token) {
-      throw new Error("Sign in required to start an audio lesson.");
+  const stopLocalMedia = useCallback(async (activeCall?: Call) => {
+    const target = activeCall ?? callRef.current;
+    if (!target) return;
+
+    try {
+      await target.microphone.disable();
+    } catch {
+      // Mic may already be off.
     }
-    return token;
-  }, [getToken]);
+    try {
+      await target.camera.disable();
+    } catch {
+      // Audio-only lesson.
+    }
+    setMicEnabled(false);
+  }, []);
 
-  const cleanupCall = useCallback(async (activeCall?: Call) => {
-    const target = activeCall ?? call;
+  const stopCallMedia = useCallback(async () => {
+    if (callMediaStoppedRef.current) return;
+    callMediaStoppedRef.current = true;
+
+    const activeCall = callRef.current;
+
+    // Mic must be fully off before leaving — otherwise Android Fabric crashes.
+    await stopLocalMedia(activeCall);
+
+    if (activeCall) {
+      try {
+        await activeCall.leave();
+      } catch {
+        // Already left.
+      }
+    }
+
     callManager.stop();
-    if (target) {
-      try {
-        await target.leave();
-      } catch {
-        // Call may already be left.
-      }
-    }
-    setCall(undefined);
-  }, [call]);
+    hasActiveSessionRef.current = false;
+  }, [stopLocalMedia]);
 
-  const disconnectClient = useCallback(async (activeClient?: StreamVideoClient) => {
-    const target = activeClient ?? client;
-    if (target) {
-      try {
-        await target.disconnectUser();
-      } catch {
-        // Client may already be disconnected.
-      }
+  const disconnectClient = useCallback(async () => {
+    const activeClient = clientRef.current;
+    if (!activeClient) return;
+
+    try {
+      await activeClient.disconnectUser();
+    } catch {
+      // Already disconnected.
     }
+
+    clientRef.current = undefined;
     setClient(undefined);
-  }, [client]);
+  }, []);
+
+  const leaveAndDisconnect = useCallback(async () => {
+    if (isDisconnectingRef.current) return;
+    isDisconnectingRef.current = true;
+
+    try {
+      await stopCallMedia();
+
+      callRef.current = undefined;
+      setCall(undefined);
+
+      await disconnectClient();
+    } finally {
+      isDisconnectingRef.current = false;
+    }
+  }, [disconnectClient, stopCallMedia]);
+
+  /** Ends the call but keeps Stream providers mounted until the screen unmounts. */
+  const endCallSession = useCallback(async () => {
+    if (isEndingCallRef.current || callMediaStoppedRef.current) return;
+
+    isEndingCallRef.current = true;
+    setIsEndingCall(true);
+    setStatus("ended");
+    setErrorMessage(null);
+
+    try {
+      await stopCallMedia();
+    } finally {
+      isEndingCallRef.current = false;
+      setIsEndingCall(false);
+    }
+  }, [stopCallMedia]);
 
   useEffect(() => {
     if (!enabled || !isSignedIn || startNonce === 0) {
       return;
     }
 
+    if (hasActiveSessionRef.current && callRef.current) {
+      return;
+    }
+
     let cancelled = false;
-    activeRef.current = true;
 
     async function connectAndJoin() {
+      callMediaStoppedRef.current = false;
+      isEndingCallRef.current = false;
       setErrorMessage(null);
-      setStatus("loading");
+      setStatus("connecting");
 
       let videoClient: StreamVideoClient | undefined;
       let streamCall: Call | undefined;
 
       try {
-        const clerkToken = await getClerkSessionToken();
-        const tokenResponse = await fetchStreamToken(clerkToken, {
-          name: userName,
-          imageUrl: userImageUrl,
-        });
+        const clerkToken = await getTokenRef.current();
+        if (!clerkToken) {
+          throw new Error("Sign in required to start an audio lesson.");
+        }
+        if (cancelled) return;
 
+        const tokenResponse = await fetchStreamToken(clerkToken, {
+          name: userNameRef.current,
+          imageUrl: userImageUrlRef.current,
+        });
         if (cancelled) return;
 
         const tokenProvider = async () => {
-          const refreshed = await getClerkSessionToken();
+          const refreshed = await getTokenRef.current();
+          if (!refreshed) throw new Error("Session expired.");
           const refreshedToken = await fetchStreamToken(refreshed, {
-            name: userName,
-            imageUrl: userImageUrl,
+            name: userNameRef.current,
+            imageUrl: userImageUrlRef.current,
           });
           return refreshedToken.token;
         };
@@ -125,25 +194,25 @@ export function useStreamAudioLesson({
           apiKey: tokenResponse.apiKey,
           user: {
             id: tokenResponse.userId,
-            name: userName,
-            image: userImageUrl,
+            name: userNameRef.current,
+            image: userImageUrlRef.current,
           },
           token: tokenResponse.token,
           tokenProvider,
         });
 
+        clientRef.current = videoClient;
         setClient(videoClient);
-        setStatus("connecting");
 
-        const { lesson, language } = screenData;
+        const { lesson, language } = screenDataRef.current;
         const callMeta = await createStreamAudioCall(clerkToken, {
           lessonId: lesson.id,
           lessonTitle: lesson.title,
           languageId: language.id,
           languageName: language.name,
-          unitId,
+          unitId: unitIdRef.current,
           clerkUserId: tokenResponse.userId,
-          userName,
+          userName: userNameRef.current,
           goals: lesson.goals.map((goal) => goal.description),
           vocabulary: lesson.vocabulary.map((item) => ({
             word: item.word,
@@ -160,110 +229,133 @@ export function useStreamAudioLesson({
             level: lesson.aiTeacher.level,
           },
         });
-
         if (cancelled) return;
 
         streamCall = videoClient.call(callMeta.callType, callMeta.callId);
+        callRef.current = streamCall;
+        setCall(streamCall);
+
         callManager.start({
           audioRole: "communicator",
           deviceEndpointType: "speaker",
         });
 
-        await streamCall.join({ create: false });
+        await streamCall.join({ create: true });
+
+        if (cancelled) return;
+
+        hasActiveSessionRef.current = true;
+        setParticipantCount(streamCall.state.participants.length);
+        setStatus("joined");
 
         try {
           await streamCall.camera.disable();
         } catch {
-          // Audio-only lesson — camera is optional.
+          // Audio-only lesson.
         }
 
         try {
           await streamCall.microphone.enable();
-          setMicEnabled(true);
-        } catch (micError) {
-          console.warn("Microphone enable failed:", micError);
-          setMicEnabled(false);
+          if (!cancelled) setMicEnabled(true);
+        } catch {
+          if (!cancelled) setMicEnabled(false);
         }
-
-        if (cancelled) {
-          await streamCall.leave().catch(() => undefined);
-          return;
-        }
-
-        setCall(streamCall);
-        setParticipantCount(streamCall.state.participants.length);
-        setStatus("joined");
       } catch (error) {
         if (cancelled) return;
-        const message =
-          error instanceof Error ? error.message : "Could not join audio lesson.";
-        setErrorMessage(message);
+        setErrorMessage(
+          error instanceof Error ? error.message : "Could not join audio lesson.",
+        );
         setStatus("error");
-        await cleanupCall(streamCall);
-        await disconnectClient(videoClient);
+        hasActiveSessionRef.current = false;
+        callMediaStoppedRef.current = true;
+        if (streamCall) {
+          await stopLocalMedia(streamCall);
+          try {
+            await streamCall.leave();
+          } catch {
+            // Ignore.
+          }
+        }
+        callManager.stop();
+        callRef.current = undefined;
+        setCall(undefined);
+        if (videoClient) {
+          try {
+            await videoClient.disconnectUser();
+          } catch {
+            // Ignore.
+          }
+        }
+        clientRef.current = undefined;
+        setClient(undefined);
       }
     }
 
-    connectAndJoin();
+    void connectAndJoin();
 
     return () => {
       cancelled = true;
-      activeRef.current = false;
-      cleanupCall();
-      disconnectClient();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reconnect only when lesson/session restarts
-  }, [enabled, isSignedIn, startNonce, unitId, screenData.lesson.id]);
+  }, [enabled, isSignedIn, startNonce, unitId, screenData.lesson.id, stopLocalMedia]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        void (async () => {
+          if (isDisconnectingRef.current) return;
+          isDisconnectingRef.current = true;
+
+          try {
+            await stopCallMedia();
+            callRef.current = undefined;
+            setCall(undefined);
+            await disconnectClient();
+          } finally {
+            isDisconnectingRef.current = false;
+          }
+        })();
+      };
+    }, [disconnectClient, stopCallMedia]),
+  );
 
   useEffect(() => {
     if (!call) return;
-
     const subscription = call.state.participants$.subscribe((participants) => {
       setParticipantCount(participants.length);
     });
-
     return () => subscription.unsubscribe();
   }, [call]);
 
-  const startCall = useCallback(() => {
-    setStartNonce((value) => value + 1);
-  }, []);
-
   const toggleMic = useCallback(async () => {
-    if (!call || status === "ended" || status === "error") {
-      return;
-    }
+    const activeCall = callRef.current;
+    if (!activeCall || status === "ended" || status === "error") return;
 
     try {
       if (micEnabled) {
-        await call.microphone.disable();
+        await activeCall.microphone.disable();
         setMicEnabled(false);
         setStatus("muted");
       } else {
-        await call.microphone.enable();
+        await activeCall.microphone.enable();
         setMicEnabled(true);
         setStatus("joined");
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not toggle microphone.";
-      setErrorMessage(message);
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not toggle microphone.",
+      );
       setStatus("error");
     }
-  }, [call, micEnabled, status]);
+  }, [micEnabled, status]);
 
-  const endCall = useCallback(async () => {
-    setStatus("ended");
+  const retry = useCallback(async () => {
+    callMediaStoppedRef.current = false;
+    isEndingCallRef.current = false;
+    hasActiveSessionRef.current = false;
+    await leaveAndDisconnect();
     setErrorMessage(null);
-    await cleanupCall();
-    await disconnectClient();
-  }, [cleanupCall, disconnectClient]);
-
-  const retry = useCallback(() => {
-    setErrorMessage(null);
-    setStatus("idle");
     setStartNonce((value) => value + 1);
-  }, []);
+  }, [leaveAndDisconnect]);
 
   return {
     status,
@@ -272,10 +364,11 @@ export function useStreamAudioLesson({
     call,
     micEnabled,
     participantCount,
-    isConnecting: status === "loading" || status === "connecting",
-    startCall,
+    isConnecting: status === "connecting",
+    isInCall: status === "joined" || status === "muted",
+    isEndingCall,
     toggleMic,
-    endCall,
+    endCall: endCallSession,
     retry,
   };
 }
