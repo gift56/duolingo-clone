@@ -25,6 +25,7 @@ from vision_agents.core.instructions import Instructions
 from vision_agents.plugins import gemini, getstream
 
 from call_permissions import ensure_agent_can_publish
+from live_captions import register_live_captions
 from lesson_context import (
     build_opening_prompt,
     build_teacher_instructions,
@@ -180,6 +181,8 @@ async def join_call(agent: Agent, call_type: str, call_id: str, **kwargs) -> Non
             len(context.goals) if context else 0,
             GEMINI_LIVE_MODEL,
         )
+
+        register_live_captions(agent)
 
         async with agent.join(call):
             await agent.simple_response(opening_prompt, interrupt=True)

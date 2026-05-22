@@ -46,6 +46,7 @@ Health check: `GET http://127.0.0.1:8000/health`
 - Speaks **English only** and teaches the selected language through English.
 - Reads lesson metadata from the Stream call `custom` field when the mobile app creates the call.
 - Voice-only: audio lesson (`fps=1`, no video to the model).
+- Live captions: Gemini input/output transcriptions are forwarded to the mobile app as Stream `custom` events (`live_caption`) while the call is active.
 
 ## Optional: change Live model
 
@@ -83,5 +84,6 @@ See [Gemini Live models](https://ai.google.dev/gemini-api/docs/models) for curre
 vision-agent/
   main.py            # Agent factory, join lifecycle, CLI
   lesson_context.py  # Parse call custom data → system prompt
+  live_captions.py   # Forward realtime transcripts to the mobile UI
   pyproject.toml
 ```

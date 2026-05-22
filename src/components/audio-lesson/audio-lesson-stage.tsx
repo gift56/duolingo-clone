@@ -17,6 +17,8 @@ type AudioLessonStageProps = {
   subtitlesEnabled: boolean;
   isConnecting?: boolean;
   isInCall?: boolean;
+  captionIsPartial?: boolean;
+  activeSpeaker?: "teacher" | "user";
   onReplaySpeech?: () => void;
 };
 
@@ -26,8 +28,18 @@ export function AudioLessonStage({
   subtitlesEnabled,
   isConnecting = false,
   isInCall = false,
+  captionIsPartial = false,
+  activeSpeaker,
   onReplaySpeech,
 }: AudioLessonStageProps) {
+  const showLiveIndicator = isInCall && !isConnecting;
+  const indicatorColor =
+    activeSpeaker === "user"
+      ? "#4D8BFF"
+      : captionIsPartial
+        ? "#F5A623"
+        : "#21C16B";
+
   return (
     <View className="mx-4 flex-1 overflow-hidden rounded-3xl">
       <Image
@@ -79,8 +91,11 @@ export function AudioLessonStage({
                   >
                     {primaryText}
                   </Text>
-                  {isInCall ? (
-                    <View className="ml-2 h-2 w-2 rounded-full bg-success" />
+                  {showLiveIndicator ? (
+                    <View
+                      className="ml-2 h-2 w-2 rounded-full"
+                      style={{ backgroundColor: indicatorColor }}
+                    />
                   ) : null}
                 </View>
                 {subtitlesEnabled ? (
