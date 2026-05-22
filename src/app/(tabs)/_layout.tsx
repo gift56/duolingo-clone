@@ -1,8 +1,20 @@
-import { Tabs } from "expo-router";
+import { useAuth } from "@clerk/expo";
+import { Redirect, Tabs } from "expo-router";
 
 import { CustomTabBar } from "@/components/navigation/custom-tab-bar";
+import { UNAUTHENTICATED_ENTRY } from "@/lib/auth-navigation";
 
 export default function TabsLayout() {
+  const { isSignedIn, isLoaded } = useAuth();
+
+  if (!isLoaded) {
+    return null;
+  }
+
+  if (!isSignedIn) {
+    return <Redirect href={UNAUTHENTICATED_ENTRY} />;
+  }
+
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}

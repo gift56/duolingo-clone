@@ -1,10 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useClerk } from "@clerk/expo";
+import { useAuth } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TabPlaceholderScreen } from "@/components/tab-placeholder-screen";
+import { signOutAndRedirect } from "@/lib/auth-navigation";
 import { useLanguageStore } from "@/store/language-store";
 import { useProgressStore } from "@/store/progress-store";
 
@@ -13,11 +14,19 @@ const TAB_BAR_HEIGHT = 64;
 export default function ProfileTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signOut } = useClerk();
+  const { signOut } = useAuth();
   const tabBarOffset = TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + 16;
   const clearSelectedLanguage = useLanguageStore(
     (state) => state.clearSelectedLanguage,
   );
+
+  const handleLogout = async () => {
+    try {
+      await signOutAndRedirect(signOut, router);
+    } catch (error) {
+      console.error("Failed to sign out", error);
+    }
+  };
 
   const handleClearAsyncStorage = async () => {
     await AsyncStorage.clear();
@@ -52,7 +61,7 @@ export default function ProfileTab() {
             </Pressable>
           </Link>
           <Pressable
-            onPress={() => void signOut()}
+            onPress={() => void handleLogout()}
             className="w-full items-center justify-center rounded-2xl border border-border bg-white py-3 active:opacity-90"
             accessibilityRole="button"
             accessibilityLabel="Log out"
