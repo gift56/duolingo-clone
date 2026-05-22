@@ -1,6 +1,6 @@
 # Lingua Vision Agent
 
-Voice-only AI language teacher for Lingua audio lessons. Built with [Vision Agents](https://visionagents.ai/) using **OpenAI Realtime** and **Stream Edge** transport.
+Voice-only AI language teacher for Lingua audio lessons. Built with [Vision Agents](https://visionagents.ai/) using **Gemini Live** and **Stream Edge** transport.
 
 ## Requirements
 
@@ -11,8 +11,10 @@ Voice-only AI language teacher for Lingua audio lessons. Built with [Vision Agen
 ```bash
 STREAM_API_KEY=...
 STREAM_API_SECRET=...
-OPENAI_API_KEY=...
+GOOGLE_API_KEY=...   # https://aistudio.google.com/apikey
 ```
+
+`GEMINI_API_KEY` is also accepted (same value as `GOOGLE_API_KEY`).
 
 The Expo app already uses `.env.local` at the project root — the agent loads that automatically.
 
@@ -43,14 +45,29 @@ Health check: `GET http://127.0.0.1:8000/health`
 
 - Speaks **English only** and teaches the selected language through English.
 - Reads lesson metadata from the Stream call `custom` field when the mobile app creates the call.
-- Voice-only: no camera or video publishing (`send_video=False`).
+- Voice-only: audio lesson (`fps=1`, no video to the model).
+
+## Optional: change Live model
+
+Set in `.env.local` or `vision-agent/.env`:
+
+```bash
+GEMINI_LIVE_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+```
+
+See [Gemini Live models](https://ai.google.dev/gemini-api/docs/models) for current model IDs.
 
 ## Troubleshooting
 
 **No AI teacher audio**
 
-- The agent uses **OpenAI Realtime** (`gpt-realtime`). Your `OPENAI_API_KEY` must have **billing enabled** and available quota.
-- If logs show `insufficient_quota` or HTTP 429, add credits at [OpenAI billing](https://platform.openai.com/account/billing).
+- The agent uses **Gemini Live** (native audio). Create a key at [Google AI Studio](https://aistudio.google.com/apikey).
+- Free tier has rate limits; if logs show quota or `429` errors, wait and retry or enable billing.
+
+**Invalid API key**
+
+- Ensure `GOOGLE_API_KEY` or `GEMINI_API_KEY` is set in root `.env.local` or `vision-agent/.env`.
+- Restart the vision-agent server after changing env vars.
 
 **`404` when stopping a session**
 

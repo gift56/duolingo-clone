@@ -1,10 +1,10 @@
 [project]
 name = "lingua-vision-agent"
 version = "0.1.0"
-description = "Lingua voice-only AI language teacher (Vision Agents + OpenAI Realtime + Stream Edge)"
+description = "Lingua voice-only AI language teacher (Vision Agents + Gemini Live + Stream Edge)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "python-dotenv>=1.2.2",
-    "vision-agents[getstream,openai]>=0.6.1",
+    "vision-agents[getstream,gemini]>=0.6.1",
 ]

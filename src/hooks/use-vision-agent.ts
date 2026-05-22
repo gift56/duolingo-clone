@@ -16,8 +16,8 @@ type UseVisionAgentParams = {
 
 function buildJoinFailureMessage(): string {
   return (
-    "AI teacher did not join the call. Check that OPENAI_API_KEY has billing " +
-    "enabled and available quota, and that the vision-agent server is running."
+    "AI teacher did not join the call. Check that GOOGLE_API_KEY (or GEMINI_API_KEY) " +
+    "is set, the vision-agent server is running, and Gemini API quota is available."
   );
 }
 

@@ -136,12 +136,32 @@ Do not discuss unrelated topics. If the learner goes off track, guide them back 
 
 
 def build_opening_prompt(context: LessonContext | None) -> str:
+    language_name = context.language_name if context else DEFAULT_LANGUAGE_NAME
+    user_name = context.user_name if context else "the learner"
+    lesson_title = context.lesson_title if context else "today's language lesson"
+
+    delivery_rules = (
+        f"You are starting a live voice lesson with {user_name}. "
+        f"Sound like a warm, human, energetic real-world {language_name} teacher — "
+        f"never robotic. Speak mostly in English. When you use a {language_name} word, "
+        f"say it slowly once, then immediately give the English meaning. "
+        f"Use short natural sentences with contractions and gentle encouragement. "
+        f"Keep your entire opening to one or two conversational sentences. "
+        f"Stay strictly on \"{lesson_title}\" — only this lesson's goals, vocabulary, "
+        f"and phrases. Do not teach unrelated topics or switch to other languages. "
+    )
+
     if context and context.opening_line:
         return (
-            f"Greet {context.user_name} warmly in English, then deliver this opening "
-            f"(you may translate or explain any {context.language_name} words in English): "
-            f"{context.opening_line}"
+            f"{delivery_rules}"
+            f"Deliver this opening (adapt wording naturally if needed): "
+            f"{context.opening_line} "
+            f"End by asking them to repeat the first target word or phrase with you."
         )
+
     return (
-        "Greet the learner warmly in English and introduce today's short language practice."
+        f"{delivery_rules}"
+        f"Greet them, preview today's focus in one upbeat sentence, introduce one "
+        f"starter word from the lesson with its English meaning, and ask them to "
+        f"repeat it with you."
     )
